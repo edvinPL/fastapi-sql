@@ -45,6 +45,16 @@ class Database(BaseModel):
 class Settings(BaseSettings):
     security: Security
     database: Database
+    PINECONE_API_KEY: str
+    PINECONE_INDEX: str
+    OPENAI_API_KEY: str
+    EMBEDDING_MODEL: str
+    CHUNK_OVERLAP: int
+    CHUNK_SIZE: int
+    NOTION_TOKEN: str
+    QDRANT_API_KEY: str
+    QDRANT_URL: str
+    QDRANT_COLLECTION_NAME: str
 
     @computed_field  # type: ignore[misc]
     @property

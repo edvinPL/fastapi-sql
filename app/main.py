@@ -2,18 +2,18 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.middleware.trustedhost import TrustedHostMiddleware
 
-from app.api.api_router import api_router, auth_router
+from app.api.api_router import api_router
 from app.core.config import get_settings
 
 app = FastAPI(
-    title="minimal fastapi postgres template",
+    title="Doctor AI",
     version="6.0.0",
     description="https://github.com/rafsaf/minimal-fastapi-postgres-template",
     openapi_url="/openapi.json",
     docs_url="/",
 )
 
-app.include_router(auth_router)
+# app.include_router(auth_router)
 app.include_router(api_router)
 
 # Sets all CORS enabled origins
