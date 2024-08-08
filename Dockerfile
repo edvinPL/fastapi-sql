@@ -3,10 +3,13 @@ FROM python:3.12.4-slim-bullseye as base
 ENV PYTHONUNBUFFERED 1
 WORKDIR /build
 
-# Install PostgreSQL client and development files
+# Install PostgreSQL client, development files, and build tools
 RUN apt-get update && \
     apt-get install -y \
     libpq-dev \
+    gcc \
+    g++ \
+    make \
     && rm -rf /var/lib/apt/lists/*
     
 # Create requirements.txt file
