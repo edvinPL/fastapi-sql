@@ -9,8 +9,6 @@ services:
         fromDatabase:
           name: DoctorAI
           property: connectionString
-      - key: API_SECRET
-        fromGroup: my-env-group
 
 databases:
   - name: DoctorAI
