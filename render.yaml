@@ -1,0 +1,38 @@
+services:
+  - type: web
+    runtime: docker
+    name: my-fastapi-app
+    repo: https://github.com/Zulelee/fastapi-sql
+    dockerCommand: bash init.sh && /venv/bin/uvicorn app.main:app --app-dir /build --host 0.0.0.0 --port 8000 --workers 2 --loop uvloop
+    scaling:
+      minInstances: 1
+      maxInstances: 3
+      targetMemoryPercent: 80
+      targetCPUPercent: 80
+    healthCheckPath: /
+    registryCredential:
+      fromRegistryCreds:
+        name: my-docker-credentials
+    envVars:
+      - key: DATABASE_URL
+        fromDatabase:
+          name: DoctorAI
+          property: connectionString
+      - key: API_SECRET
+        fromGroup: my-env-group
+
+databases:
+  - name: DoctorAI
+    databaseName: doctorai
+    user: rDGJeEDqAz
+    ipAllowList:
+      - source: 0.0.0.0/0
+        description: everywhere
+    highAvailability:
+      enabled: true
+
+envVarGroups:
+  - name: my-env-group
+    envVars:
+      - key: API_SECRET
+        generateValue: true
