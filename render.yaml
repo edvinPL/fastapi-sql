@@ -17,7 +17,5 @@ databases:
     ipAllowList:
       - source: 0.0.0.0/0
         description: everywhere
-    highAvailability:
-      enabled: true
 
 
