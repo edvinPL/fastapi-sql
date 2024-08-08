@@ -3,6 +3,12 @@ FROM python:3.12.4-slim-bullseye as base
 ENV PYTHONUNBUFFERED 1
 WORKDIR /build
 
+# Install PostgreSQL client and development files
+RUN apt-get update && \
+    apt-get install -y \
+    libpq-dev \
+    && rm -rf /var/lib/apt/lists/*
+    
 # Create requirements.txt file
 FROM base as poetry
 RUN pip install poetry==1.8.2
