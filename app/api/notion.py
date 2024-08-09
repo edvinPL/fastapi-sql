@@ -34,8 +34,6 @@ CHUNK_SIZE = get_settings().CHUNK_SIZE
 CHUNK_OVERLAP = get_settings().CHUNK_OVERLAP
 EMBEDDING_MODEL = get_settings().EMBEDDING_MODEL
 OPENAI_API_KEY = get_settings().OPENAI_API_KEY
-PINECONE_API_KEY = get_settings().PINECONE_API_KEY
-PINECONE_INDEX = get_settings().PINECONE_INDEX
 
 # Global variables
 docs = []
@@ -77,7 +75,6 @@ async def load_documents_from_notion_db(document_id):
     )
 
     docs = loader.load()
-    print(docs)
 
     length_of_docs = len(docs)
 
@@ -134,7 +131,7 @@ async def split_documents(docs):
     return split_docs
 
 async def calculate_pinecone_cost(docs):
-    logger.info("Calculating pinecone & embeddings cost")
+    logger.info("Calculating embeddings cost")
 
     # Initialize tokenizer for a specific OpenAI model
     encoder = tiktoken.encoding_for_model(EMBEDDING_MODEL)
@@ -178,18 +175,15 @@ async def calculate_pinecone_cost(docs):
 
 from sqlalchemy import create_engine
 from langchain_qdrant import Qdrant
-import traceback
 
 async def cleanup_and_upsert_documents(docs, cleanup_mode):
     logger.info(
-        f"Upserting documents to Pinecone with {cleanup_mode} cleanup mode")
+        f"Upserting documents to Qdrant with {cleanup_mode} cleanup mode")
     start_time = time.time()
 
     embeddings = OpenAIEmbeddings(openai_api_key=OPENAI_API_KEY,
                                   model=EMBEDDING_MODEL)
-    # vectorstore = PineconeVectorStore(pinecone_api_key=PINECONE_API_KEY,
-    #                                   embedding=embeddings,
-    #                                   index_name=PINECONE_INDEX)
+
     url = get_settings().QDRANT_URL
     api_key = get_settings().QDRANT_API_KEY
 
@@ -201,25 +195,42 @@ async def cleanup_and_upsert_documents(docs, cleanup_mode):
 
     namespace = "qdrant/my_docs"
 
-    # record_manager = SQLRecordManager(
-    #     namespace, db_url="sqlite:///record_manager_cache.sql"
-    # )
     engine = create_async_engine(get_settings().sqlalchemy_database_uri.render_as_string(hide_password=False))
 
     record_manager = SQLRecordManager(
         namespace, engine=engine
     )
 
-    print(record_manager)
-
     await record_manager.acreate_schema()
+    mode = cleanup_mode.lower() 
     
-    result = await aindex(
-        docs,
-        record_manager,
-        vectorstore,
-        cleanup=cleanup_mode,
-        source_id_key="id"
-    )
+    result = {}
+
+    if mode == "incremental":
+        result = await aindex(
+            docs,
+            record_manager,
+            vectorstore,
+            cleanup="incremental",
+            source_id_key="id"
+        )
+    elif mode == "full":
+        result = await aindex(
+            docs,
+            record_manager,
+            vectorstore,
+            cleanup="full",
+            source_id_key="id"
+        )
+    elif mode == "none":
+        result = await aindex(
+            docs,
+            record_manager,
+            vectorstore,
+            cleanup=None,
+            source_id_key="id"
+        )
+    else:
+        raise Exception("Incorrect cleanup mode")
     
     return result

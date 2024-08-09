@@ -53,7 +53,7 @@ router = APIRouter()
 #     session.add(current_user)
 #     await session.commit()
 
-@router.post("/upsert", description="Upsert Notion DB/Page into Pinecone")
+@router.post("/upsert", description="Upsert Notion DB/Page into Qdrant")
 async def upsert(request: dict):
     logger.info(f"Upsert function started")
     start_time = time.time()
@@ -83,7 +83,6 @@ async def upsert(request: dict):
         return {
             "success": True,
             "total_vectors": len(split_docs),
-            # "total_pinecone_cost": cost["total_pinecone_cost"],
             "total_embedding_cost": cost["total_embedding_cost"],
             "upsert_details": upsert_result,
             "cleanup_mode": cleanup_mode,
