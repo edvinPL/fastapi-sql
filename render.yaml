@@ -1,0 +1,21 @@
+services:
+  - type: web
+    runtime: docker
+    name: my-fastapi-app
+    repo: https://github.com/Zulelee/fastapi-sql
+    dockerCommand: bash init.sh && /venv/bin/uvicorn app.main:app --app-dir /build --host 0.0.0.0 --port 8000 --workers 2 --loop uvloop
+    envVars:
+      - key: DATABASE_URL
+        fromDatabase:
+          name: DoctorAI
+          property: connectionString
+
+databases:
+  - name: DoctorAI
+    plan: free
+    databaseName: doctorai
+    ipAllowList:
+      - source: 0.0.0.0/0
+        description: everywhere
+
+

@@ -19,5 +19,15 @@ services:
     ports:
       - "${DATABASE__PORT}:5432"
 
+  web:
+    build: .
+    depends_on:
+      - postgres_db
+    environment:
+      - DATABASE_URL=postgresql://user:password@postgres_db:5432/mydatabase
+    ports:
+      - "8000:8000"  # Adjust port as necessary
+    command: uvicorn app.main:app --reload
+
 volumes:
   postgres_db:

@@ -3,6 +3,15 @@ FROM python:3.12.4-slim-bullseye as base
 ENV PYTHONUNBUFFERED 1
 WORKDIR /build
 
+# Install PostgreSQL client, development files, and build tools
+RUN apt-get update && \
+    apt-get install -y \
+    libpq-dev \
+    gcc \
+    g++ \
+    make \
+    && rm -rf /var/lib/apt/lists/*
+    
 # Create requirements.txt file
 FROM base as poetry
 RUN pip install poetry==1.8.2
@@ -32,6 +41,5 @@ RUN addgroup --gid 1001 --system uvicorn && \
 
 # Run init.sh script then start uvicorn
 RUN chown -R uvicorn:uvicorn /build
-CMD bash init.sh && \
-    runuser -u uvicorn -- /venv/bin/uvicorn app.main:app --app-dir /build --host 0.0.0.0 --port 8000 --workers 2 --loop uvloop
+CMD runuser -u uvicorn -- /venv/bin/uvicorn app.main:app --app-dir /build --host 0.0.0.0 --port 8000 --workers 2 --loop uvloop
 EXPOSE 8000
