@@ -63,28 +63,30 @@ async def upsert(request: dict):
         cleanup_mode = request.get('cleanup_mode')
         last_update_time = request.get('last_update_time')
 
-        if last_update_time is None:
-            last_update_time = (datetime.now() - timedelta(days=7)).isoformat()
-        docs =[]
-        if doc_type == "database":
-            docs = await notion.load_documents_from_notion_db(notion_id)
-        elif doc_type == "page":
-            docs = await notion.load_documents_from_notion_page(notion_id)
-        else:
-            raise HTTPException(status_code=400,
-                                detail="Invalid document type")
+        # if last_update_time is None:
+        #     last_update_time = (datetime.now() - timedelta(days=7)).isoformat()
+        # docs =[]
+        # if doc_type == "database":
+        #     docs = await notion.load_documents_from_notion_db(notion_id)
+        # elif doc_type == "page":
+        #     docs = await notion.load_documents_from_notion_page(notion_id)
+        # else:
+        #     raise HTTPException(status_code=400,
+        #                         detail="Invalid document type")
 
-        split_docs = await notion.split_documents(docs)
-        cost = await notion.calculate_pinecone_cost(split_docs)
+        response = await notion.process_notion_data(notion_id, doc_type, cleanup_mode)
 
-        upsert_result = await notion.cleanup_and_upsert_documents(split_docs, cleanup_mode)
+        # split_docs = await notion.split_documents(docs)
+        # cost = await notion.calculate_pinecone_cost(split_docs)
+
+        # upsert_result = await notion.cleanup_and_upsert_documents(split_docs, cleanup_mode)
 
         total_time = time.time() - start_time
         return {
             "success": True,
-            "total_vectors": len(split_docs),
-            "total_embedding_cost": cost["total_embedding_cost"],
-            "upsert_details": upsert_result,
+            "total_vectors": response["total_vectors"],
+            "total_embedding_cost": response["Embedding_cost"],
+            "upsert_details": response["Qdrant_result"],
             "cleanup_mode": cleanup_mode,
             "last_update_time": last_update_time,
             "total_process_time": total_time
