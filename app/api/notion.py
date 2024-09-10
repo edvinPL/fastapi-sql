@@ -25,6 +25,9 @@ from langchain_qdrant import Qdrant
 from typing import Dict, Any, List, Generator, Tuple
 import concurrent.futures
 from requests.exceptions import HTTPError
+import nltk
+
+nltk.download('punkt')
 
 # Set up logging
 logging.basicConfig(level=logging.DEBUG)
