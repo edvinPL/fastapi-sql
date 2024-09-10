@@ -236,45 +236,6 @@ async def cleanup_and_upsert_documents(docs, cleanup_mode):
     
     return result
 
-# def load_notion_db_in_chunks(
-#     integration_token: str,
-#     database_id: str,
-#     doc_type: str,
-#     chunk_size: int = 10,
-#     filter_object: Dict[str, Any] = None
-# ) -> Generator[List[Dict[str, Any]], None, None]:
-#     loader = NotionDBLoader(
-#         integration_token=NOTION_TOKEN,
-#         database_id=database_id,
-#         request_timeout_sec=90,
-#     )
-
-#     NOTION_BASE_URL = "https://api.notion.com/v1"
-#     DATABASE_URL = NOTION_BASE_URL + f"/databases/{database_id}/query"
-    
-#     def page_generator():
-#         query_dict = {"page_size": chunk_size}
-#         while True:
-#             data = loader._request(
-#                 DATABASE_URL,
-#                 method="POST",
-#                 query_dict=query_dict,
-#             )
-#             yield from data.get("results", [])
-#             if not data.get("has_more"):
-#                 break
-#             query_dict["start_cursor"] = data.get("next_cursor")
-
-#     chunk = []
-#     for page in page_generator():
-#         chunk.append(page)
-#         if len(chunk) == chunk_size:
-#             yield chunk
-#             chunk = []
-
-#     if chunk:  # Yield any remaining pages
-#         yield chunk
-
 from threading import Lock
 
 class RateLimiter:
@@ -379,19 +340,6 @@ def load_notion_db_in_chunks(
     NOTION_BASE_URL = "https://api.notion.com/v1"
     DATABASE_URL = NOTION_BASE_URL + f"/databases/{database_id}/query"
     
-    # def page_generator():
-    #     query_dict = {"page_size": chunk_size}
-    #     while True:
-    #         data = loader._request(
-    #             DATABASE_URL,
-    #             method="POST",
-    #             query_dict=query_dict,
-    #         )
-    #         yield from data.get("results", [])
-    #         if not data.get("has_more"):
-    #             break
-    #         query_dict["start_cursor"] = data.get("next_cursor")
-
     def page_generator():
         query_dict = {"page_size": chunk_size}
         retries = 5
@@ -493,7 +441,7 @@ async def process_notion_data(database_id: str, doc_type: str, cleanup_mode:str)
                     logger.error(f"Error during chunk processing: {e}")
 
     elif doc_type == "page":
-        total_docs = split_documents(load_documents_from_notion_page(notion_id))
+        total_docs = split_documents(load_documents_from_notion_page(database_id))
     else:
         raise HTTPException(status_code=400,
                             detail="Invalid document type")
@@ -507,96 +455,3 @@ async def process_notion_data(database_id: str, doc_type: str, cleanup_mode:str)
     logger.info(f"Total documents: {len(total_docs)} - Duration: {process_time:.4f} seconds")
 
     return {"Embedding_cost" : cost_info["total_embedding_cost"], "Qdrant_result": vectordb_result, "total_vectors": len(total_docs)}
-
-
-
-# ---------------------- This works made loading of 30 pages db to 93 seconds from 130s -----------------------
-# def fetch_chunk(
-#     integration_token: str,
-#     database_id: str,
-#     chunk_size: int,
-#     start_cursor: str = None
-# ) -> Tuple[List[Dict[str, Any]], bool, str]:
-#     loader = NotionDBLoader(
-#         integration_token=integration_token,
-#         database_id=database_id,
-#         request_timeout_sec=90,
-#     )
-#     NOTION_BASE_URL = "https://api.notion.com/v1"
-#     DATABASE_URL = NOTION_BASE_URL + f"/databases/{database_id}/query"
-
-#     query_dict = {"page_size": chunk_size}
-#     if start_cursor:
-#         query_dict["start_cursor"] = start_cursor
-
-#     data = loader._request(DATABASE_URL, method="POST", query_dict=query_dict)
-#     results = data.get("results", [])
-#     has_more = data.get("has_more", False)
-#     next_cursor = data.get("next_cursor", None)
-#     return results, has_more, next_cursor
-
-# def load_chunks(
-#     integration_token: str,
-#     database_id: str,
-#     chunk_size: int = 10
-# ) -> List[List[Dict[str, Any]]]:
-#     chunks = []
-#     start_cursor = None
-
-#     while True:
-#         results, has_more, next_cursor = fetch_chunk(integration_token, database_id, chunk_size, start_cursor)
-#         if results:
-#             chunks.append(results)
-#         if not has_more:
-#             break
-#         start_cursor = next_cursor
-
-#     return chunks
-
-# def process_chunk(chunk: List[Dict[str, Any]], loader: NotionDBLoader) -> List:
-#     documents = [loader.load_page(page) for page in chunk]
-#     # Process documents here
-#     for doc in documents:
-#         print(f"Processing document: {doc.metadata.get("name")[:50]}...")
-
-#     split_docs = split_documents(documents)
-#     return split_docs
-
-# def process_notion_data(database_id: str, doc_type: str):
-#     logger.info("Upserting notion documents")
-#     start_time = time.time()
-
-#     loader = NotionDBLoader(
-#         integration_token=NOTION_TOKEN,
-#         database_id=database_id,
-#         request_timeout_sec=60,
-#     )
-
-#     # Load chunks
-#     logger.info("Loading chunks...")
-#     chunks = load_chunks(NOTION_TOKEN, database_id, chunk_size=10)
-#     logger.info(f"Total {len(chunks)} chunks loaded.")
-
-#     total_docs = 0
-
-#     # Process chunks concurrently
-#     with concurrent.futures.ThreadPoolExecutor(max_workers=3) as executor:
-#         future_to_chunk = {}
-#         for i, chunk in enumerate(chunks):
-#             future = executor.submit(process_chunk, chunk, loader)
-#             future_to_chunk[future] = i  # Track which chunk index is being processed
-
-#         for future in concurrent.futures.as_completed(future_to_chunk):
-#             try:
-#                 split_docs = future.result()
-#                 total_docs += len(split_docs)
-#                 logger.info(f"Chunk {future_to_chunk[future]} processed with {len(split_docs)} documents split.")
-#                 # Handle split_docs here, e.g., upsert to Pinecone
-#             except Exception as e:
-#                 logger.error(f"Error processing chunk: {e}")
-
-#     process_time = time.time() - start_time
-#     logger.info(f"Total documents: {total_docs} - Duration: {process_time:.4f} seconds")
-
-# --------------------------------------------------------------------
-

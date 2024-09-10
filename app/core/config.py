@@ -53,6 +53,14 @@ class Settings(BaseSettings):
     QDRANT_API_KEY: str
     QDRANT_URL: str
     QDRANT_COLLECTION_NAME: str
+    RESEARCH_LLM_NAME: str
+    PERPLEXITY_API_KEY: str
+    YT_API_KEY: str
+    RAPID_API_KEY:str
+    SERP_API_KEY:str
+    QDRANT_FLOWISE_URL:str
+    NOTION_DATABASE_ID_RESEARCH:str
+    EXA_API_KEY:str
 
     @computed_field  # type: ignore[misc]
     @property

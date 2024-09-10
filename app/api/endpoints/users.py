@@ -1,7 +1,4 @@
-from fastapi import APIRouter, Depends, status, HTTPException
-from sqlalchemy import delete
-from sqlalchemy.ext.asyncio import AsyncSession
-
+from fastapi import APIRouter, status, HTTPException
 from app.api import deps
 from app.core.security.password import get_password_hash
 from app.models import User
@@ -12,46 +9,12 @@ import logging
 import time
 from datetime import datetime, timedelta
 import json
+from app.api.agents import IdeationFlow, ResearchFlow, ScriptingFlow
 # Set up logging
 logging.basicConfig(level=logging.DEBUG)
 logger = logging.getLogger("uvicorn")
 
 router = APIRouter()
-
-
-# @router.get("/me", response_model=UserResponse, description="Get current user")
-# async def read_current_user(
-#     current_user: User = Depends(deps.get_current_user),
-# ) -> User:
-#     return current_user
-
-
-# @router.delete(
-#     "/me",
-#     status_code=status.HTTP_204_NO_CONTENT,
-#     description="Delete current user",
-# )
-# async def delete_current_user(
-#     current_user: User = Depends(deps.get_current_user),
-#     session: AsyncSession = Depends(deps.get_session),
-# ) -> None:
-#     await session.execute(delete(User).where(User.user_id == current_user.user_id))
-#     await session.commit()
-
-
-# @router.post(
-#     "/reset-password",
-#     status_code=status.HTTP_204_NO_CONTENT,
-#     description="Update current user password",
-# )
-# async def reset_current_user_password(
-#     user_update_password: UserUpdatePasswordRequest,
-#     session: AsyncSession = Depends(deps.get_session),
-#     current_user: User = Depends(deps.get_current_user),
-# ) -> None:
-#     current_user.hashed_password = get_password_hash(user_update_password.password)
-#     session.add(current_user)
-#     await session.commit()
 
 @router.post("/upsert", description="Upsert Notion DB/Page into Qdrant")
 async def upsert(request: dict):
@@ -61,25 +24,9 @@ async def upsert(request: dict):
         notion_id = request.get('notion_id')
         doc_type = request.get('doc_type')
         cleanup_mode = request.get('cleanup_mode')
-        last_update_time = request.get('last_update_time')
-
-        # if last_update_time is None:
-        #     last_update_time = (datetime.now() - timedelta(days=7)).isoformat()
-        # docs =[]
-        # if doc_type == "database":
-        #     docs = await notion.load_documents_from_notion_db(notion_id)
-        # elif doc_type == "page":
-        #     docs = await notion.load_documents_from_notion_page(notion_id)
-        # else:
-        #     raise HTTPException(status_code=400,
-        #                         detail="Invalid document type")
+        last_update_time = request.get('last_update_time', "")
 
         response = await notion.process_notion_data(notion_id, doc_type, cleanup_mode)
-
-        # split_docs = await notion.split_documents(docs)
-        # cost = await notion.calculate_pinecone_cost(split_docs)
-
-        # upsert_result = await notion.cleanup_and_upsert_documents(split_docs, cleanup_mode)
 
         total_time = time.time() - start_time
         return {
@@ -89,6 +36,62 @@ async def upsert(request: dict):
             "upsert_details": response["Qdrant_result"],
             "cleanup_mode": cleanup_mode,
             "last_update_time": last_update_time,
+            "total_process_time": total_time
+        }
+
+    except json.JSONDecodeError:
+        raise HTTPException(status_code=400,
+                            detail="Invalid JSON in request body")
+    except Exception as error:
+        logger.error(f"Error in upsert: {str(error)}")
+        raise HTTPException(status_code=500, detail=str(error))
+
+@router.post("/execute_agent_teams", description="The team of agents performs a thorough research and returns high-quality, scientifically accurate scripts ready for teleprompter use")
+async def agent_team(request: dict):
+    logger.info(f"Research started")
+    start_time = time.time()
+    try:
+        initial_input = request.get('initial_input')
+
+        ideation = IdeationFlow(timeout=300, verbose=True)
+
+        ideation_result = await ideation.run(input=initial_input)
+
+        research = ResearchFlow(timeout=300, verbose=True)
+
+        research_result = await research.run(input=initial_input, ideation=ideation_result)
+
+        total_time = time.time() - start_time
+        return {
+            "success": True,
+            "ideation_result": ideation_result,
+            "research_result": research_result,
+            "total_process_time": total_time
+        }
+
+    except json.JSONDecodeError:
+        raise HTTPException(status_code=400,
+                            detail="Invalid JSON in request body")
+    except Exception as error:
+        logger.error(f"Error in upsert: {str(error)}")
+        raise HTTPException(status_code=500, detail=str(error))
+
+@router.post("/generate_script")
+async def generate_script(request: dict):
+    logger.info(f"Research started")
+    start_time = time.time()
+    try:
+        ideation_result = request.get('ideation_result')
+        research_result = request.get('research_result')
+
+        scripting = ScriptingFlow(timeout=300, verbose=True)
+
+        response = await scripting.run(ideation=ideation_result, research=research_result)
+
+        total_time = time.time() - start_time
+        return {
+            "success": True,
+            "final_script": response,
             "total_process_time": total_time
         }
 
