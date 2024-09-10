@@ -542,5 +542,5 @@ def save_in_notion(content:str, title:str):
         return "Failed to upsert"
 
 
-def upsert_to_qdrant(page_id:str):    
-    return notion.process_notion_data(page_id, "page", "incremental")
+async def upsert_to_qdrant(page_id:str):    
+    return await notion.process_notion_data(page_id, "page", "incremental")
