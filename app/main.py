@@ -14,8 +14,8 @@ app = FastAPI(
 )
 
 
-import nltk
-nltk.download('punkt')
+# import nltk
+# nltk.download('punkt')
 
 # app.include_router(auth_router)
 app.include_router(api_router)

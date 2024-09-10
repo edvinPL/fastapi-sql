@@ -40,7 +40,7 @@ RUN addgroup --gid 1001 --system uvicorn && \
     adduser --gid 1001 --shell /bin/false --disabled-password --uid 1001 uvicorn
 
 # Download NLTK data during the build phase
-# RUN mkdir -p ~/nltk_data && python -m nltk.downloader -d ~/nltk_data punkt
+RUN python -c "import nltk; nltk.download('punkt')"
 
 # Run init.sh script then start uvicorn
 RUN chown -R uvicorn:uvicorn /build
