@@ -42,7 +42,7 @@ RUN addgroup --gid 1001 --system uvicorn && \
 # Download NLTK data during the build phase
 RUN python -c "import nltk; nltk.download('punkt')"
 
-RUN chmod -R 777 /usr/local/lib/python3.10/site-packages
+RUN chmod -R 777 /venv/lib/python3.12/site-packages
 
 # Run init.sh script then start uvicorn
 RUN chown -R uvicorn:uvicorn /build
