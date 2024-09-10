@@ -39,6 +39,9 @@ COPY init.sh .
 RUN addgroup --gid 1001 --system uvicorn && \
     adduser --gid 1001 --shell /bin/false --disabled-password --uid 1001 uvicorn
 
+# Download NLTK data during the build phase
+RUN mkdir -p $NLTK_DATA && python -m nltk.downloader -d ~/nltk_data punkt
+
 # Run init.sh script then start uvicorn
 RUN chown -R uvicorn:uvicorn /build
 CMD runuser -u uvicorn -- /venv/bin/uvicorn app.main:app --app-dir /build --host 0.0.0.0 --port 8000 --loop uvloop
