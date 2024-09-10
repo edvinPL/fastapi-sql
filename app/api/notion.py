@@ -27,7 +27,11 @@ import concurrent.futures
 from requests.exceptions import HTTPError
 import nltk
 
-nltk.download('punkt')
+# Set the NLTK data directory
+os.environ['NLTK_DATA'] = '/usr/local/nltk_data'
+
+# Download 'punkt' if not already present
+nltk.download('punkt', download_dir='/usr/local/nltk_data')
 
 # Set up logging
 logging.basicConfig(level=logging.DEBUG)
