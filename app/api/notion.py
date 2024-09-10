@@ -5,7 +5,6 @@ from fastapi.middleware.cors import CORSMiddleware
 import uvicorn
 import tiktoken
 from langchain_openai import OpenAIEmbeddings
-from langchain_pinecone import PineconeVectorStore
 import logging
 import time
 from dotenv import load_dotenv
