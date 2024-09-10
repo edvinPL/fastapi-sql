@@ -199,7 +199,7 @@ class ResearchFlow(Workflow):
 
         agent = OpenAIAgent.from_tools(tool_list, verbose=True, system_prompt=system_prompt, llm=self.llm)
 
-        response = agent.achat(input)
+        response = await agent.achat(input)
 
         self.report["Research_Navigator"] = str(response)
 
@@ -237,7 +237,7 @@ class ResearchFlow(Workflow):
 
         agent = OpenAIAgent.from_tools(tool_list, verbose=True, system_prompt=system_prompt, llm=self.llm)
 
-        response = agent.achat(input)
+        response = await agent.achat(input)
 
         self.report["Knowledge_Curator_Fact_Checker"] = str(response)
 
