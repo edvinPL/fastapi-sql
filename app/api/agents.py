@@ -130,8 +130,8 @@ class IdeationFlow(Workflow):
 
         tool_list = [
                     FunctionTool.from_defaults(tools.ultimatebrain_information, 
-                        name="Ultimate_Brain", 
-                        description="This is the Ultimate_Brain that contains a lot of curated distilled knowledge about scripting, content creation, AI and optimal way to write youtube video scripts. It contains a lot of viable useful crucial key information for perfect youtube video masterpiece creation process. Especially titles, thumbnails, hooks, payoffs, cognitive bias, retention methods etc."
+                        name="scripting_brain", 
+                        description="This is the scripting_brain that contains a lot of curated distilled knowledge about scripting, content creation, AI and optimal way to write youtube video scripts. It contains a lot of viable useful crucial key information for perfect youtube video masterpiece creation process. Especially titles, thumbnails, hooks, payoffs, cognitive bias, retention methods etc."
                         ),
 
                     FunctionTool.from_defaults(tools.avatar_information, 

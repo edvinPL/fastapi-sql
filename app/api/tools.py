@@ -357,7 +357,9 @@ def avatar_information(query:str):
             "qdrantServerUrl": get_settings().QDRANT_URL,
             "qdrantCollection": "Avatar",
             "contentPayloadKey": "content",
-            "metadataPayloadKey": "metadata"
+            "metadataPayloadKey": "metadata",
+            "description": "use it to find out more about our target audience, our avatars. Their information about interests, age, employment and other information about them.",
+            "name": "Avatar"
         }
     }
 
@@ -373,7 +375,9 @@ def ultimatebrain_information(query:str):
             "qdrantServerUrl": get_settings().QDRANT_URL,
             "qdrantCollection": "ScriptingBrain",
             "contentPayloadKey": "content",
-            "metadataPayloadKey": "metadata"
+            "metadataPayloadKey": "metadata",
+            "description": "This is the scripting_brain that contains a lot of curated distilled knowledge about scripting, content creation, AI and optimal way to write youtube video scripts. It contains a lot of viable useful crucial key information for perfect youtube video masterpiece creation process. Especially titles, thumbnails, hooks, payoffs, cognitive bias, retention methods etc.",
+            "name": "scripting_brain"
         }
     }
 
@@ -389,7 +393,9 @@ def sugarbrain_information(query:str):
             "qdrantServerUrl": get_settings().QDRANT_URL,
             "qdrantCollection": "Sugar",
             "contentPayloadKey": "content",
-            "metadataPayloadKey": "metadata"
+            "metadataPayloadKey": "metadata",
+            "description": "Use it to retrieve all the important information for current script in terms of scientific knowledge. It contains research papers, notes, insights, conclusions, scientific review articles and much more relating to current problem we are trying to tackle in the video. Use it always.",
+            "name": "Ultimate_Brain"
         }
     }
 

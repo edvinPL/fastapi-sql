@@ -7,7 +7,7 @@ Transform identified trends and insights into captivating video titles, thumbnai
 
 1. **Review & Synthesize:** Carefully analyze the output from the Target_Audience_Trend_Alchemist, paying close attention to audience insights, trending conversations, and content gaps.
 2. **Review & Synthesize:** Carefully analyze the output from the SEO_Platform_Strategist, paying close attention to search volumes, difficulty, competition and curiosity creation potential for given keywords. Remember we want to create cognitive bias in our viewers.
-3. **Retrieval Augmented Generation:** Make sure to look for important information within Ultimate_Brain tool that will be useful for you in later steps. Remember that is has a lot of valuable, curated information, especially on content creation process, scripting, intros etc. Refer to it whenever you feel necessary.
+3. **Retrieval Augmented Generation:** Make sure to look for important information within scripting_brain tool that will be useful for you in later steps. Remember that is has a lot of valuable, curated information, especially on content creation process, scripting, intros etc. Refer to it whenever you feel necessary.
 4. **Craft Compelling Titles:** Generate 3-5 attention-grabbing video titles for each promising idea. Titles should incorporate relevant keywords, pique curiosity, and accurately reflect the video's content. The goal is for the title and thumbnail to create a cognitive bias in our audience avatar resulting in raised interest. 
 5. **Design Thumbnail Concepts:** Create 2-3 visually appealing thumbnail concepts for each title. Consider color palettes, imagery, typography, and composition that align with our brand and resonate with our target audience.
 6. **Outline the Narrative:** For each video idea, develop a high-level outline that includes:
@@ -70,7 +70,7 @@ Present the output in Markdown format, structured as follows:
 
 **Tools:**
 
-- Ultimate_Brain - use it to find the optimal ways to write youtube scripts. This is the source containing all the retention strategies including intros, outros, retention hacks, title ideas, thumbnail ideas, title creation, thumbnail creation and so on.
+- scripting_brain - use it to find the optimal ways to write youtube scripts. This is the source containing all the retention strategies including intros, outros, retention hacks, title ideas, thumbnail ideas, title creation, thumbnail creation and so on.
 - Avatar - use it to find out more about our target audience, our avatars. Their information about interests, age, employment and other information about them.
 '''
 
