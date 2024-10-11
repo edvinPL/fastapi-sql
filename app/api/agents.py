@@ -8,11 +8,15 @@ from llama_index.core.workflow import (
     StopEvent,
     Workflow,
     step,
+    Context
 )
 from llama_index.core.tools import FunctionTool
 from app.api import prompts
 from app.core.config import get_settings
 from app.api import tools
+from datetime import datetime
+from llama_index.core.llms import ChatMessage
+from pydantic import Field
 
 
 
@@ -48,8 +52,6 @@ class IdeationFlow(Workflow):
         exa_tool = ExaToolSpec(
             api_key=get_settings().EXA_API_KEY
         )
-
-        # avatar_tool = avatar_retreiver_tool()
 
         tool_list = [FunctionTool.from_defaults(tools.perplexity_ai_search, 
                         name="perplexity_ai_search", 
@@ -87,7 +89,7 @@ class IdeationFlow(Workflow):
         agent = OpenAIAgent.from_tools(tool_list, verbose=True, system_prompt=system_prompt, llm=self.llm)
 
         response = agent.chat(input)
-
+        tools.save_outputs_in_notion(str(response), f"Trend And Audience Analysis - {datetime.now().strftime('%Y-%m-%d %H:%M')}")
         self.report["Trend_And_Audience_Analysis"] = str(response)
 
         return SEO_Platform_Strategist(input=str(response))
@@ -116,6 +118,8 @@ class IdeationFlow(Workflow):
 
         response = agent.chat(input)
 
+        tools.save_outputs_in_notion(str(response), f"SEO Analysis - {datetime.now().strftime('%Y-%m-%d %H:%M')}")
+        
         self.report["SEO_Analysis"] = str(response)
 
         return Content_Strategist_Prompt_Weaver(input=str(response))
@@ -124,7 +128,7 @@ class IdeationFlow(Workflow):
     @step()
     async def content_strategy(self, ev: Content_Strategist_Prompt_Weaver) -> StopEvent:
 
-        input = f"This is the output of the Target_Audience_Trend_Alchemist: {self.report["Trend_And_Audience_Analysis"]}. \n\n This is the output of the SEO_Platform_Strategist:  {self.report["SEO_Analysis"]}"
+        input = f"This is the output of the Target_Audience_Trend_Alchemist: {self.report["Trend_And_Audience_Analysis"]}. \n\n This is the output of the SEO_Platform_Strategist:  {self.report["SEO_Analysis"]} "
 
         system_prompt= prompts.Content_Strategist_Prompt_Weaver_Prompt
 
@@ -142,6 +146,8 @@ class IdeationFlow(Workflow):
         agent = OpenAIAgent.from_tools(tool_list, verbose=True, system_prompt=system_prompt, llm=self.llm)
 
         response = agent.chat(input)
+
+        tools.save_outputs_in_notion(str(response), f"Content Strategist - {datetime.now().strftime('%Y-%m-%d %H:%M')}")
 
         self.report["Content_Strategist_Prompt_Weaver"] = str(response)
 
@@ -166,13 +172,13 @@ class ResearchFlow(Workflow):
         
         initial_input = ev.input
         ideation_output = ev.ideation
-        prompt = f"Here is the initial topic - {initial_input}. \n I need you to find statistics, studies, examples from reputable scientific sources and store properly. \n\n Here are the 3 idea sets finalized: {ideation_output}"
+        prompt = f"Here is the initial topic - {initial_input}. \n I need you to find statistics, studies, examples from reputable scientific sources and store properly. \n\n Here are the 3 idea sets finalized: {ideation_output}. "
         
         return Research_Navigator(input=str(prompt))
 
     @step()
     async def research_navigator(self, ev: Research_Navigator) -> Knowledge_Curator_Fact_Checker:
-        input = ev.input
+        input = str(ev.input)
         
         system_prompt= prompts.Research_Navigator_Prompt
 
@@ -201,6 +207,8 @@ class ResearchFlow(Workflow):
 
         response = await agent.achat(input)
 
+        tools.save_outputs_in_notion(str(response), f"Research Navigator - {datetime.now().strftime('%Y-%m-%d %H:%M')}")
+
         self.report["Research_Navigator"] = str(response)
 
         return Knowledge_Curator_Fact_Checker(input=str(response))
@@ -223,7 +231,7 @@ class ResearchFlow(Workflow):
 
                     FunctionTool.from_defaults(tools.save_in_notion, 
                         name="save_in_notion", 
-                        description="Use this to send information to Notion database"
+                        description="Use this to save research to Notion database. It accepts the content, title and list of DOIs of the research articles in the content like this DOI1, DOI2, DOI3..."
                         ),
 
                     FunctionTool.from_defaults(tools.upsert_to_qdrant, 
@@ -239,6 +247,8 @@ class ResearchFlow(Workflow):
 
         response = await agent.achat(input)
 
+        tools.save_outputs_in_notion(str(response), f"Knowledge Curator Fact Checker - {datetime.now().strftime('%Y-%m-%d %H:%M')}")
+
         self.report["Knowledge_Curator_Fact_Checker"] = str(response)
 
         return StopEvent(result=str(response))
@@ -246,10 +256,13 @@ class ResearchFlow(Workflow):
 class Lead_Scriptwriter_Engagement_Maestro(Event):
     input: str
 
-class Scientific_Accuracy_Clarity_Guardian(Event):
+class GEORGE_BLACKMAN_EVALUATOR(Event):
     input: str
 
-class Call_to_Action_Channel_Integration_Specialist(Event):
+class MR_BEAST_EVALUATOR(Event):
+    input: str
+
+class Evaluate_Score(Event):
     input: str
 
 class ScriptingFlow(Workflow):
@@ -262,15 +275,19 @@ class ScriptingFlow(Workflow):
         
         ideation_output = ev.ideation
         research_output = ev.research
+
+        self.report["ideation_output"] = ideation_output
+        self.report["research_output"] = research_output
+
         prompt = f"Here is the chosen set from output of Team 1 (Ideation Workflow): {ideation_output}. \n\n Here is the output of Team 2 (Medical Researcher): {research_output}"
         
         return Lead_Scriptwriter_Engagement_Maestro(input=str(prompt))
 
     @step()
-    async def scriptwriter(self, ev: Lead_Scriptwriter_Engagement_Maestro) -> Scientific_Accuracy_Clarity_Guardian:
+    async def scriptwriter(self, ev: Lead_Scriptwriter_Engagement_Maestro) -> GEORGE_BLACKMAN_EVALUATOR | MR_BEAST_EVALUATOR:
         input = ev.input
         
-        system_prompt= prompts.Lead_Scriptwriter_Engagement_Maestro_Prompt
+        system_prompt= prompts.Scriptwriter_Prompt
 
         tool_list = [FunctionTool.from_defaults(tools.avatar_information, 
                         name="Avatar", 
@@ -280,32 +297,14 @@ class ScriptingFlow(Workflow):
                     FunctionTool.from_defaults(tools.sugarbrain_information, 
                         name="Ultimate_Brain", 
                         description="Use it to retrieve all the important information for current script in terms of scientific knowledge. It contains research papers, notes, insights, conclusions, scientific review articles and much more relating to current problem we are trying to tackle in the video. Use it always."
-                        )
-        ]
-
-        agent = OpenAIAgent.from_tools(tool_list, verbose=True, system_prompt=system_prompt, llm=self.llm)
-
-        response = agent.chat(input)
-
-        # self.report["Lead_Scriptwriter_Engagement_Maestro"] = str(response)
-
-        return Scientific_Accuracy_Clarity_Guardian(input=str(response))
-
-    @step()
-    async def accuracy_check(self, ev: Scientific_Accuracy_Clarity_Guardian) -> Call_to_Action_Channel_Integration_Specialist:
-
-        input = f"Here is the first draft of the script: {ev.input}"
-
-        system_prompt= prompts.Scientific_Accuracy_Clarity_Guardian_Prompt
-
-        tool_list = [FunctionTool.from_defaults(tools.ultimatebrain_information, 
+                        ),
+                    FunctionTool.from_defaults(tools.ultimatebrain_information, 
                         name="scripting_brain", 
                         description="This is a database that contains a lot of curated distilled knowledge about scripting, content creation and optimal way to write youtube video scripts. It contains a lot of viable, useful, crucial, key information for perfect, masterpiece youtube video content creation process."
                         ),
-
-                    FunctionTool.from_defaults(tools.sugarbrain_information, 
-                        name="Ultimate_Brain", 
-                        description="Use it to retrieve all the important information for current script in terms of scientific knowledge. It contains research papers, notes, insights, conclusions, scientific review articles and much more relating to current problem we are trying to tackle in the video. Use it always."
+                    FunctionTool.from_defaults(tools.search_notion_pages, 
+                        name="search_notion_pages", 
+                        description="Use this to search for relevent research articles to add references in the script."
                         )
         ]
 
@@ -313,27 +312,107 @@ class ScriptingFlow(Workflow):
 
         response = agent.chat(input)
 
-        self.report["Scientific_Accuracy_Clarity_Guardian"] = str(response)
-
-        return Call_to_Action_Channel_Integration_Specialist(input=str(response))
+        self.report["Final_Script"] = str(response)
         
+        tools.save_outputs_in_notion(str(response), f"Final Script - {datetime.now().strftime('%Y-%m-%d %H:%M')}")
+        
+        self.send_event(GEORGE_BLACKMAN_EVALUATOR(input=str(response)))
+        self.send_event(MR_BEAST_EVALUATOR(input=str(response)))
+
     @step()
-    async def final_script(self, ev: Call_to_Action_Channel_Integration_Specialist) -> StopEvent:
+    async def mr_beast_evaluator(self, ev: MR_BEAST_EVALUATOR) -> Evaluate_Score:
+        input = ev.input
+        
+        system_prompt= prompts.MR_BEAST_EVALUATOR
 
-        input = f"Here is the output of the Scientific_Accuracy_Clarity_Guardian: {ev.input}"
-
-        system_prompt= prompts.Call_to_Action_Channel_Integration_Specialist_Prompt
-
-        tool_list = [FunctionTool.from_defaults(tools.ultimatebrain_information, 
-                        name="scripting_brain", 
-                        description="This is a database that contains a lot of curated distilled knowledge about scripting, content creation and optimal way to write youtube video scripts. It contains a lot of viable, useful, crucial, key information for perfect, masterpiece youtube video content creation process."
-                        )
-        ]
+        tool_list = []
 
         agent = OpenAIAgent.from_tools(tool_list, verbose=True, system_prompt=system_prompt, llm=self.llm)
 
         response = agent.chat(input)
 
-        self.report["Call_to_Action_Channel_Integration_Specialist"] = str(response)
+        self.report["MR_BEAST_SCORE"] = str(response)
 
-        return StopEvent(result=self.report)
+        return Evaluate_Score(input="")
+
+    @step()
+    async def gorge_blackman_evaluator(self, ev: GEORGE_BLACKMAN_EVALUATOR) -> Evaluate_Score:
+        input = ev.input
+        
+        system_prompt= prompts.GEORGE_BLACKMAN_EVALUATOR
+
+        tool_list = []
+
+        agent = OpenAIAgent.from_tools(tool_list, verbose=True, system_prompt=system_prompt, llm=self.llm)
+
+        response = agent.chat(input)
+
+        self.report["GEORGE_BLACKMAN_SCORE"] = str(response)
+
+        return Evaluate_Score(input="")
+
+    @step()
+    async def evaluate_score(self, ctx: Context, ev: Evaluate_Score) -> StopEvent | Lead_Scriptwriter_Engagement_Maestro | None:
+        
+        ready = ctx.collect_events(ev, [Evaluate_Score] * 2)
+        if ready is None:
+            return None
+
+        print(self.report["GEORGE_BLACKMAN_SCORE"])
+        print(self.report["MR_BEAST_SCORE"])
+
+        GEORGE_BLACKMAN_SCORE = self.report["GEORGE_BLACKMAN_SCORE"]
+        MR_BEAST_SCORE = self.report["MR_BEAST_SCORE"]
+
+        if check_total_mb_score(GEORGE_BLACKMAN_SCORE) or check_total_mb_score(MR_BEAST_SCORE):
+            input = f'''This is the final script that was generated: {self.report["Final_Script"]}. 
+            Here is the chosen set from output of Team 1 (Ideation Workflow): {ideation_output}. 
+            Here is the output of Team 2 (Medical Researcher): {research_output}. 
+            Current date & time: {datetime.now().strftime("%Y-%m-%d %H:%M")}
+            The score given to the final script by gorge blackman & Mr Beast is as following:
+            GEORGE_BLACKMAN_SCORE: {self.report["GEORGE_BLACKMAN_SCORE"]}
+            MR_BEAST_SCORE: {self.report["MR_BEAST_SCORE"]}
+
+            The score wasn't up to mark. Please recreate the script again.
+            '''
+            return Lead_Scriptwriter_Engagement_Maestro(input=input)
+        else:
+            return StopEvent(result=self.report)
+
+def check_total_mb_score(score_string):
+    try:
+        # Split the string into lines and find the line with the Total MB Score
+        lines = score_string.splitlines()
+        for line in lines:
+            if "Total MB Score:" in line:
+                # Extract the score from the line
+                score = float(line.split(":")[1].strip().split('/')[0])
+                # Check the score condition
+                return score <= 5
+        
+        # If Total MB Score line is not found
+        print("Total MB Score not found.")
+        return None
+
+    except (ValueError, IndexError):
+        print("Invalid input format.")
+        return None
+
+async def modify_script(script: str, input: str):
+    llm = OpenAI(api_key=get_settings().OPENAI_API_KEY, model=get_settings().RESEARCH_LLM_NAME)
+    tool_list = [
+                    FunctionTool.from_defaults(tools.search_notion_pages, 
+                        name="search_notion_pages", 
+                        description="Use this to search for relevent research articles to add references in the script."
+                        ),
+                    FunctionTool.from_defaults(tools.extract_notion_page_content, 
+                        name="extract_notion_page_content", 
+                        description="Use this to extract the page content from notion"
+                        )
+        ]
+
+    agent = OpenAIAgent.from_tools(tool_list, verbose=True, system_prompt=prompts.SCRIPT_MODIFICATION_PROMPT, llm=llm)
+    response = agent.chat(input)
+    # resp = OpenAI(api_key=get_settings().OPENAI_API_KEY, model=get_settings().RESEARCH_LLM_NAME).chat(messages)
+
+    return str(response)

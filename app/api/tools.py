@@ -9,6 +9,7 @@ import markdown2
 import math
 import re
 from app.api import notion
+from pydantic import Field
 
 yt_api_key = get_settings().YT_API_KEY
 rapidapi_key = get_settings().RAPID_API_KEY
@@ -31,9 +32,9 @@ def perplexity_ai_search(query:str):
     try:
         response = requests.post("https://api.perplexity.ai/chat/completions", headers=headers, json=body)
         response.raise_for_status()  # Raise an HTTPError for bad responses
-        json_data = response.json()  # Parse the JSON response
-        print(json.dumps(json_data, indent=2))  # Print formatted JSON
-        return json_data
+        # json_data = response.json()  # Parse the JSON response
+        # print(json.dumps(json_data, indent=2))  # Print formatted JSON
+        return response.text
     except requests.exceptions.RequestException as e:
         print(f'Error making request: {e}')
         return None
@@ -484,6 +485,64 @@ def markdown_to_notion_blocks(markdown_content):
 
     return blocks
 
+def store_markdown_in_notion_research(token, database_id, markdown_content, page_title, doi_options):
+    """
+    Store markdown content as a page in the Notion database with batch handling for API limits.
+    
+    Parameters:
+    - token: Notion API token.
+    - database_id: The ID of the target Notion database.
+    - markdown_content: Markdown content to store in the page.
+    - page_title: Title of the page.
+    """
+    # Initialize Notion client
+    notion = Client(auth=token)
+
+    # Convert markdown content to Notion blocks
+    blocks = markdown_to_notion_blocks(markdown_content)
+
+    # Create the first page with the title and the first batch of blocks (up to 100 blocks)
+    page_properties = {
+        "parent": {"database_id": database_id},
+        "properties": { "Name":{
+            "type": "title",
+            "title": [
+                {
+                    "type": "text",
+                    "text": {
+                        "content": page_title
+                    }
+                }
+            ]},
+            "Tags": {
+      "multi_select": 
+        doi_options
+      
+    }
+        }
+    }
+
+    # Split blocks into chunks of 100 blocks max
+    batch_size = 100
+    num_batches = math.ceil(len(blocks) / batch_size)
+
+    # Create the page with the first batch
+    response = notion.pages.create(
+        **page_properties,
+        children=blocks[:batch_size]
+    )
+
+    # If there are more blocks, append them in additional requests
+    if num_batches > 1:
+        page_id = response['id']
+        for i in range(1, num_batches):
+            notion.blocks.children.append(
+                block_id=page_id,
+                children=blocks[i*batch_size:(i+1)*batch_size]
+            )
+
+    return response
+
 def store_markdown_in_notion(token, database_id, markdown_content, page_title):
     """
     Store markdown content as a page in the Notion database with batch handling for API limits.
@@ -536,9 +595,48 @@ def store_markdown_in_notion(token, database_id, markdown_content, page_title):
 
     return response
 
-def save_in_notion(content:str, title:str):
+def save_in_notion(content:str, 
+    title:str , doi: str):
     token = get_settings().NOTION_TOKEN  # Your Notion integration token
     database_id = get_settings().NOTION_DATABASE_ID_RESEARCH
+      # Split the DOIs by comma and strip any whitespace
+    doi_list = [doi.strip() for doi in doi.split(",") if doi.strip()]
+    
+    # Prepare DOI options for Notion
+    doi_options = [{"name": doi} for doi in doi_list]
+    response = store_markdown_in_notion_research(token, database_id, content, title, doi_options)
+
+    if response:
+        return response
+    else:
+        return "Failed to upsert"
+
+def search_notion_pages(query: str):
+    token = get_settings().NOTION_TOKEN  # Your Notion integration token
+    notion = Client(auth=token)
+
+    # Construct the search request
+    response = notion.search(query=query)
+
+    # Filter results to get only pages
+    pages = [result for result in response.get('results', []) if result['object'] == 'page']
+
+    return pages
+
+# def save_in_notion(content:str, title:str):
+#     token = get_settings().NOTION_TOKEN  # Your Notion integration token
+#     database_id = get_settings().NOTION_DATABASE_ID_RESEARCH
+
+#     response = store_markdown_in_notion(token, database_id, content, title)
+
+#     if response:
+#         return response
+#     else:
+#         return "Failed to upsert"
+
+def save_outputs_in_notion(content:str, title:str):
+    token = get_settings().NOTION_TOKEN  # Your Notion integration token
+    database_id = get_settings().NOTION_DATABASE_ID_OUTPUTS
 
     response = store_markdown_in_notion(token, database_id, content, title)
 
@@ -550,3 +648,76 @@ def save_in_notion(content:str, title:str):
 
 async def upsert_to_qdrant(page_id:str):    
     return await notion.process_notion_data(page_id, "page", "incremental")
+
+def extract_notion_page_content( page_url: str):
+    """
+    Extract content from a Notion page given its URL.
+
+    Parameters:
+    - token: Notion API token.
+    - page_url: URL of the Notion page.
+
+    Returns:
+    - The content of the page as a string, or an error message if the request fails.
+    """
+    token = get_settings().NOTION_TOKEN  # Your Notion integration token
+    # Extract the page ID from the URL
+    page_id_match = re.search(r'([a-zA-Z0-9]+)$', page_url)
+    if not page_id_match:
+        return "Invalid Notion page URL."
+
+    page_id = page_id_match.group(0)
+
+    # Set up the API endpoint
+    url = f"https://api.notion.com/v1/pages/{page_id}"
+    headers = {
+        "Authorization": f"Bearer {token}",
+        "Content-Type": "application/json",
+        "Notion-Version": "2022-06-28"  # Use the latest version of the API
+    }
+
+    # Make the API request
+    response = requests.get(url, headers=headers)
+
+    if response.status_code != 200:
+        return f"Error fetching page: {response.status_code} - {response.text}"
+
+    # Extract and return content from the response
+    data = response.json()
+    # content = extract_content_from_response(data)
+    
+    return data
+
+def extract_content_from_response(data):
+    """
+    Extract content from the API response data.
+
+    Parameters:
+    - data: The JSON response from the Notion API.
+
+    Returns:
+    - A string representing the extracted content.
+    """
+    content = []
+    
+    # Traverse the blocks and extract text
+    if "results" in data:
+        for block in data['results']:
+            if block['type'] == 'paragraph':
+                text = ''.join([t['text']['content'] for t in block['paragraph']['rich_text']])
+                content.append(text)
+            elif block['type'] == 'heading_1':
+                text = ''.join([t['text']['content'] for t in block['heading_1']['rich_text']])
+                content.append(f"# {text}")
+            elif block['type'] == 'heading_2':
+                text = ''.join([t['text']['content'] for t in block['heading_2']['rich_text']])
+                content.append(f"## {text}")
+            elif block['type'] == 'heading_3':
+                text = ''.join([t['text']['content'] for t in block['heading_3']['rich_text']])
+                content.append(f"### {text}")
+            elif block['type'] == 'bulleted_list_item':
+                text = ''.join([t['text']['content'] for t in block['bulleted_list_item']['rich_text']])
+                content.append(f"- {text}")
+            # Add more block types as needed
+    
+    return '\n'.join(content)

@@ -61,6 +61,7 @@ class Settings(BaseSettings):
     QDRANT_FLOWISE_URL:str
     NOTION_DATABASE_ID_RESEARCH:str
     EXA_API_KEY:str
+    NOTION_DATABASE_ID_OUTPUTS:str
 
     @computed_field  # type: ignore[misc]
     @property

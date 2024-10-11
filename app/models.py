@@ -55,3 +55,14 @@ class RefreshToken(Base):
         ForeignKey("user_account.user_id", ondelete="CASCADE"),
     )
     user: Mapped["User"] = relationship(back_populates="refresh_tokens")
+
+class AgentResponses(Base):
+    __tablename__ = "agent_response"
+
+    id: Mapped[str] = mapped_column(
+        Uuid(as_uuid=False), primary_key=True, default=lambda _: str(uuid.uuid4())
+    )
+
+    
+
+
