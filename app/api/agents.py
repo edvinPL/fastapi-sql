@@ -305,6 +305,10 @@ class ScriptingFlow(Workflow):
                     FunctionTool.from_defaults(tools.search_notion_pages, 
                         name="search_notion_pages", 
                         description="Use this to search for relevent research articles to add references in the script."
+                        ),
+                    FunctionTool.from_defaults(tools.extract_notion_page_content, 
+                        name="extract_notion_page_content", 
+                        description="Use this to extract the page content from notion"
                         )
         ]
 

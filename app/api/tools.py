@@ -649,7 +649,46 @@ def save_outputs_in_notion(content:str, title:str):
 async def upsert_to_qdrant(page_id:str):    
     return await notion.process_notion_data(page_id, "page", "incremental")
 
-def extract_notion_page_content( page_url: str):
+# def extract_notion_page_content( page_url: str):
+#     """
+#     Extract content from a Notion page given its URL.
+
+#     Parameters:
+#     - token: Notion API token.
+#     - page_url: URL of the Notion page.
+
+#     Returns:
+#     - The content of the page as a string, or an error message if the request fails.
+#     """
+#     token = get_settings().NOTION_TOKEN  # Your Notion integration token
+#     # Extract the page ID from the URL
+#     page_id_match = re.search(r'([a-zA-Z0-9]+)$', page_url)
+#     if not page_id_match:
+#         return "Invalid Notion page URL."
+
+#     page_id = page_id_match.group(0)
+
+#     # Set up the API endpoint
+#     url = f"https://api.notion.com/v1/pages/{page_id}"
+#     headers = {
+#         "Authorization": f"Bearer {token}",
+#         "Content-Type": "application/json",
+#         "Notion-Version": "2022-06-28"  # Use the latest version of the API
+#     }
+
+#     # Make the API request
+#     response = requests.get(url, headers=headers)
+
+#     if response.status_code != 200:
+#         return f"Error fetching page: {response.status_code} - {response.text}"
+
+#     # Extract and return content from the response
+#     data = response.json()
+#     # content = extract_content_from_response(data)
+    
+#     return data
+
+def extract_notion_page_content(page_url: str):
     """
     Extract content from a Notion page given its URL.
 
@@ -662,14 +701,14 @@ def extract_notion_page_content( page_url: str):
     """
     token = get_settings().NOTION_TOKEN  # Your Notion integration token
     # Extract the page ID from the URL
-    page_id_match = re.search(r'([a-zA-Z0-9]+)$', page_url)
+    page_id_match = re.search(r'([a-f0-9]{32})$', page_url)
     if not page_id_match:
         return "Invalid Notion page URL."
 
     page_id = page_id_match.group(0)
 
-    # Set up the API endpoint
-    url = f"https://api.notion.com/v1/pages/{page_id}"
+    # Set up the API endpoint for fetching block children
+    url = f"https://api.notion.com/v1/blocks/{page_id}/children"
     headers = {
         "Authorization": f"Bearer {token}",
         "Content-Type": "application/json",
@@ -680,13 +719,13 @@ def extract_notion_page_content( page_url: str):
     response = requests.get(url, headers=headers)
 
     if response.status_code != 200:
-        return f"Error fetching page: {response.status_code} - {response.text}"
+        return f"Error fetching page content: {response.status_code} - {response.text}"
 
     # Extract and return content from the response
     data = response.json()
-    # content = extract_content_from_response(data)
+    content = extract_content_from_response(data)
     
-    return data
+    return content
 
 def extract_content_from_response(data):
     """
