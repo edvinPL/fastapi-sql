@@ -62,6 +62,7 @@ class Settings(BaseSettings):
     NOTION_DATABASE_ID_RESEARCH:str
     EXA_API_KEY:str
     NOTION_DATABASE_ID_OUTPUTS:str
+    MONGODB_URL:str
 
     @computed_field  # type: ignore[misc]
     @property

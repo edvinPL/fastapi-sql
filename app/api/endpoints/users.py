@@ -7,6 +7,7 @@ import json
 from app.api.agents import IdeationFlow, ResearchFlow, ScriptingFlow, modify_script
 from motor.motor_asyncio import AsyncIOMotorClient
 from bson import ObjectId
+from app.core.config import get_settings
 
 # Set up logging
 logging.basicConfig(level=logging.DEBUG)
@@ -15,7 +16,7 @@ logger = logging.getLogger("uvicorn")
 router = APIRouter()
 
 # MongoDB connection setup
-client = AsyncIOMotorClient('mongodb+srv://zulele:TestDB001@cluster0.koyk2ff.mongodb.net/?retryWrites=true&w=majority&appName=Cluster0')
+client = AsyncIOMotorClient(get_settings().MONGODB_URL)
 db = client.DoctorAI
 
 
