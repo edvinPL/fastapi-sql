@@ -414,9 +414,9 @@ async def modify_script(script: str, input: str):
                         description="Use this to extract the page content from notion"
                         )
         ]
-
+    agent_input = f"The script is:{script}. The modification request is: {input}"
     agent = OpenAIAgent.from_tools(tool_list, verbose=True, system_prompt=prompts.SCRIPT_MODIFICATION_PROMPT, llm=llm)
-    response = agent.chat(input)
+    response = agent.chat(agent_input)
     # resp = OpenAI(api_key=get_settings().OPENAI_API_KEY, model=get_settings().RESEARCH_LLM_NAME).chat(messages)
 
     return str(response)
