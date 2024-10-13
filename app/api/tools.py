@@ -485,6 +485,122 @@ def markdown_to_notion_blocks(markdown_content):
 
     return blocks
 
+# def markdown_to_notion_blocks(markdown_content):
+#     """
+#     Convert markdown content to Notion block objects directly without HTML conversion.
+#     """
+#     lines = markdown_content.splitlines()
+#     blocks = []
+    
+#     for line in lines:
+#         line = line.strip()
+
+#         # Handle Headers
+#         if line.startswith("# "):
+#             blocks.append({
+#                 "object": "block",
+#                 "type": "heading_1",
+#                 "heading_1": {
+#                     "rich_text": [{"type": "text", "text": {"content": line[2:].strip()}}]
+#                 }
+#             })
+#         elif line.startswith("## "):
+#             blocks.append({
+#                 "object": "block",
+#                 "type": "heading_2",
+#                 "heading_2": {
+#                     "rich_text": [{"type": "text", "text": {"content": line[3:].strip()}}]
+#                 }
+#             })
+#         elif line.startswith("### "):
+#             blocks.append({
+#                 "object": "block",
+#                 "type": "heading_3",
+#                 "heading_3": {
+#                     "rich_text": [{"type": "text", "text": {"content": line[4:].strip()}}]
+#                 }
+#             })
+        
+#         # Handle Unordered Lists
+#         elif line.startswith("- "):
+#             blocks.append({
+#                 "object": "block",
+#                 "type": "bulleted_list_item",
+#                 "bulleted_list_item": {
+#                     "rich_text": [{"type": "text", "text": {"content": line[2:].strip()}}]
+#                 }
+#             })
+
+#         # Handle Horizontal Rules
+#         elif line == "---":
+#             blocks.append({
+#                 "object": "block",
+#                 "type": "divider",
+#                 "divider": {}
+#             })
+
+#         # Handle Links
+#         link_pattern = r'\[(.*?)\]\((.*?)\)'
+#         if re.search(link_pattern, line):
+#             matches = re.findall(link_pattern, line)
+#             rich_text = []
+#             last_end = 0
+
+#             for text, url in matches:
+#                 start = line.find(text, last_end)
+#                 if last_end < start:
+#                     rich_text.append({
+#                         "type": "text",
+#                         "text": {"content": line[last_end:start]}
+#                     })
+#                 rich_text.append({
+#                     "type": "text",
+#                     "text": {"content": text},
+#                     "link": {"url": url}
+#                 })
+#                 last_end = start + len(text)
+
+#             if last_end < len(line):
+#                 rich_text.append({
+#                     "type": "text",
+#                     "text": {"content": line[last_end:]}
+#                 })
+
+#             blocks.append({
+#                 "object": "block",
+#                 "type": "paragraph",
+#                 "paragraph": {
+#                     "rich_text": rich_text
+#                 }
+#             })
+
+#         # Handle Bold Text
+#         elif "**" in line:
+#             bold_text = re.sub(r"\*\*(.*?)\*\*", r"\1", line)
+#             blocks.append({
+#                 "object": "block",
+#                 "type": "paragraph",
+#                 "paragraph": {
+#                     "rich_text": [{
+#                         "type": "text",
+#                         "text": {"content": bold_text}
+#                     }]
+#                 }
+#             })
+
+#         # Handle Regular Paragraphs
+#         else:
+#             if line:  # Avoid empty lines
+#                 blocks.append({
+#                     "object": "block",
+#                     "type": "paragraph",
+#                     "paragraph": {
+#                         "rich_text": [{"type": "text", "text": {"content": line}}]
+#                     }
+#                 })
+
+#     return blocks
+
 def store_markdown_in_notion_research(token, database_id, markdown_content, page_title, doi_options):
     """
     Store markdown content as a page in the Notion database with batch handling for API limits.

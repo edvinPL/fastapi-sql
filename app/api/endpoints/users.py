@@ -419,7 +419,7 @@ async def get_all_chats():
 @router.post("/sessions")
 async def create_session():
     try:
-        login_datetime = datetime.now()
+        login_datetime =  datetime.utcnow()
         expiry_datetime = login_datetime + timedelta(hours=24)
         
         collection = db.Session
@@ -444,15 +444,22 @@ async def get_latest_session():
     try:
         collection = db.Session
         latest_session = await collection.find_one(
-            sort=[("login_datetime", -1)]
+            sort=[("login", -1)]
         )
         
         if latest_session is None:
-            return {"success": True, "expiry": None}
+            return {"success": True, "session_active": False}
+
+        date_now = datetime.utcnow()
+
+        if latest_session["expiry"] < date_now:
+            session_active = False
+        else:
+            session_active = True
         
         return {
             "success": True,
-            "expiry": latest_session["expiry"]
+            "session_active": session_active
         }
         
     except Exception as error:
