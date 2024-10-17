@@ -33,13 +33,15 @@ class Target_Audience_Trend_Alchemist(Event):
 class IdeationFlow(Workflow):
     llm = OpenAI(api_key=get_settings().OPENAI_API_KEY, model=get_settings().RESEARCH_LLM_NAME)
     
+    chat_history = []
     report = {}
 
     @step()
     async def start_agent_flow(self, ev: StartEvent) -> Target_Audience_Trend_Alchemist:
         
         initial_input = ev.input
-        prompt = f"Here is the initial topic I need youtube ideas on - {initial_input}."
+        self.chat_history = ev.chat_history
+        prompt = f"Here is the initial topic I need youtube ideas on - {initial_input}. \n\n The chat history with the brainstorming agent is: {self.chat_history}"
         
         return Target_Audience_Trend_Alchemist(input=str(prompt))
 
@@ -98,7 +100,7 @@ class IdeationFlow(Workflow):
     @step()
     async def seo_optimization(self, ev: SEO_Platform_Strategist) -> Content_Strategist_Prompt_Weaver:
 
-        input = f"Here is the output of the Target Audience Trend Alchemist: {ev.input}. I need you to validate the topics, titles, and thumbnails for search optimization."
+        input = f"Here is the output of the Target Audience Trend Alchemist: {ev.input}. I need you to validate the topics, titles, and thumbnails for search optimization.  \n\n The chat history with the brainstorming agent is: {self.chat_history}"
 
         system_prompt= prompts.SEO_Platform_Strategist_Prompt
 
@@ -108,7 +110,7 @@ class IdeationFlow(Workflow):
 
         tool_list = [FunctionTool.from_defaults(tools.google_promise, 
                         name="google_promise", 
-                        description="Google Promise Keyword Tool used via RapidAPI, that should be used whenever you need to find information about current search volumes and popularity on any topic and keyword or phrase. It runs both dedicated global search for English language. You can also do dedicated location research by specifying country, like US or GB. Purpose: Fetches keyword data, including search volume, competition, and related keywords, from Google Keyword Planner via RapidAPI. Make sure that the input is no longer than 3 words"
+                        description="Google Promise Keyword Tool used via RapidAPI, that should be used whenever you need to find information about current search volumes and popularity on any topic and keyword or phrase. It runs both dedicated global search for English language. You can also do dedicated location research by specifying country, like US or GB. Purpose: Fetches keyword data, including search volume, competition, and related keywords, from Google Keyword Planner via RapidAPI. Make sure that the input is no longer than 1-2 words"
                         )
         ]
 
@@ -128,7 +130,7 @@ class IdeationFlow(Workflow):
     @step()
     async def content_strategy(self, ev: Content_Strategist_Prompt_Weaver) -> StopEvent:
 
-        input = f"This is the output of the Target_Audience_Trend_Alchemist: {self.report["Trend_And_Audience_Analysis"]}. \n\n This is the output of the SEO_Platform_Strategist:  {self.report["SEO_Analysis"]} "
+        input = f"This is the output of the Target_Audience_Trend_Alchemist: {self.report["Trend_And_Audience_Analysis"]}. \n\n This is the output of the SEO_Platform_Strategist:  {self.report["SEO_Analysis"]}   \n\n The chat history with the brainstorming agent is: {self.chat_history}"
 
         system_prompt= prompts.Content_Strategist_Prompt_Weaver_Prompt
 
@@ -166,13 +168,15 @@ class ResearchFlow(Workflow):
     llm = OpenAI(api_key=get_settings().OPENAI_API_KEY, model=get_settings().RESEARCH_LLM_NAME)
     
     report = {}
+    chat_history = []
 
     @step()
     async def start_agent_flow(self, ev: StartEvent) -> Research_Navigator:
         
         initial_input = ev.input
         ideation_output = ev.ideation
-        prompt = f"Here is the initial topic - {initial_input}. \n I need you to find statistics, studies, examples from reputable scientific sources and store properly. \n\n Here are the 3 idea sets finalized: {ideation_output}. "
+        self.chat_history = ev.chat_history
+        prompt = f"Here is the initial topic - {initial_input}. \n I need you to find statistics, studies, examples from reputable scientific sources and store properly. \n\n Here are the 3 idea sets finalized: {ideation_output}.  \n\n The chat history with the brainstorming agent is: {self.chat_history}"
         
         return Research_Navigator(input=str(prompt))
 
@@ -216,7 +220,7 @@ class ResearchFlow(Workflow):
     @step()
     async def knowledge_curator(self, ev: Knowledge_Curator_Fact_Checker) -> StopEvent:
 
-        input = f"Here is the output of the Research_Navigator: {ev.input}"
+        input = f"Here is the output of the Research_Navigator: {ev.input}.  \n\n The chat history with the brainstorming agent is: {self.chat_history}"
 
         system_prompt= prompts.Knowledge_Curator_Fact_Checker_Prompt
 
@@ -269,6 +273,7 @@ class ScriptingFlow(Workflow):
     llm = OpenAI(api_key=get_settings().OPENAI_API_KEY, model=get_settings().RESEARCH_LLM_NAME)
     
     report = {}
+    chat_history = []
 
     @step()
     async def start_agent_flow(self, ev: StartEvent) -> Lead_Scriptwriter_Engagement_Maestro:
@@ -276,10 +281,11 @@ class ScriptingFlow(Workflow):
         ideation_output = ev.ideation
         research_output = ev.research
 
+        self.chat_history = ev.chat_history
         self.report["ideation_output"] = ideation_output
         self.report["research_output"] = research_output
 
-        prompt = f"Here is the chosen set from output of Team 1 (Ideation Workflow): {ideation_output}. \n\n Here is the output of Team 2 (Medical Researcher): {research_output}"
+        prompt = f"Here is the chosen set from output of Team 1 (Ideation Workflow): {ideation_output}. \n\n Here is the output of Team 2 (Medical Researcher): {research_output}  \n\n The chat history is: {self.chat_history}"
         
         return Lead_Scriptwriter_Engagement_Maestro(input=str(prompt))
 
@@ -402,7 +408,7 @@ def check_total_mb_score(score_string):
         print("Invalid input format.")
         return None
 
-async def modify_script(script: str, input: str):
+async def modify_script(script: str, input: str, chat_history):
     llm = OpenAI(api_key=get_settings().OPENAI_API_KEY, model=get_settings().RESEARCH_LLM_NAME)
     tool_list = [
                     FunctionTool.from_defaults(tools.search_notion_pages, 
@@ -414,9 +420,21 @@ async def modify_script(script: str, input: str):
                         description="Use this to extract the page content from notion"
                         )
         ]
-    agent_input = f"The script is:{script}. The modification request is: {input}"
+    agent_input = f"The script is:{script}. The modification request is: {input} \n\n The chat history is: {chat_history}"
     agent = OpenAIAgent.from_tools(tool_list, verbose=True, system_prompt=prompts.SCRIPT_MODIFICATION_PROMPT, llm=llm)
     response = agent.chat(agent_input)
     # resp = OpenAI(api_key=get_settings().OPENAI_API_KEY, model=get_settings().RESEARCH_LLM_NAME).chat(messages)
+
+    return str(response)
+
+async def generate_final_new_script(initial_script: str, modification_prompt:str, modified_script: str):
+       
+    messages = [
+        ChatMessage(
+            role="system", content="You are a skilled script writer and editor tasked with generating a final script based on the initial script, modification request and the modified script"
+        ),
+        ChatMessage(role="user", content=f"Generate the complete final script. \n\n This is the initial script: {initial_script} \n\n This is was the modification request: {modification_prompt} \n\n This is the modified script response based on the request: {modified_script}"),
+    ]
+    response = OpenAI(api_key=get_settings().OPENAI_API_KEY, model=get_settings().RESEARCH_LLM_NAME).chat(messages)
 
     return str(response)

@@ -4,7 +4,7 @@ import logging
 import time
 from datetime import datetime, timedelta
 import json
-from app.api.agents import IdeationFlow, ResearchFlow, ScriptingFlow, modify_script
+from app.api.agents import IdeationFlow, ResearchFlow, ScriptingFlow, modify_script, generate_final_new_script
 from motor.motor_asyncio import AsyncIOMotorClient
 from bson import ObjectId
 from app.core.config import get_settings
@@ -61,16 +61,21 @@ async def agent_team(
         initial_input = request.get('initial_input')
         chat_id = ObjectId(request.get('chat_id'))
         collection = db.Ideation
-        
+
+        chat_history = await messages(request.get('chat_id'))
+
         ideation = IdeationFlow(timeout=300, verbose=True)
 
-        ideation_result = await ideation.run(input=initial_input)
+        ideation_result = await ideation.run(input=initial_input, chat_history=chat_history)
 
         research = ResearchFlow(timeout=300, verbose=True)
 
-        research_result = await research.run(input=initial_input, ideation=ideation_result)
+        research_result = await research.run(input=initial_input, ideation=ideation_result, chat_history=chat_history)
 
         total_time = time.time() - start_time
+        
+        await add_message(f"Ideation result: {ideation_result}", request.get('chat_id'), "ai")
+        await add_message(f"Research result: {research_result}", request.get('chat_id'), "ai")
 
         document = {
             "initial_input": initial_input,
@@ -108,18 +113,26 @@ async def generate_script(request: dict):
         research_result = request.get('research_result')
         ideation_id = ObjectId(request.get("ideation_id"))
         chat_id = ObjectId(request.get('chat_id'))
+        
+        chat_history = await messages(request.get('chat_id'))
+        
         collection = db.Scripts
 
         scripting = ScriptingFlow(timeout=300, verbose=True)
 
-        response = await scripting.run(ideation=ideation_result, research=research_result)
+        response = await scripting.run(ideation=ideation_result, research=research_result, chat_history=chat_history)
 
         total_time = time.time() - start_time
+
+        await add_message(f"Initial Script: {response["Final_Script"]}", request.get('chat_id'), "ai")
+        await add_message(f"MR Beast Feedback: {response["MR_BEAST_SCORE"]}", request.get('chat_id'), "ai")
+        await add_message(f"George Blackman Feedback: {response["GEORGE_BLACKMAN_SCORE"]}", request.get('chat_id'), "ai")
 
         document = {
             "ideation_id": ideation_id,
             "initial_input": ideation_result,
-            "script": response["Final_Script"],
+            "initial_script": response["Final_Script"],
+            "final_script": response["Final_Script"],
             "mr_beast_score": response["MR_BEAST_SCORE"],
             "george_blackman_score": response["GEORGE_BLACKMAN_SCORE"],
             "chat_id": chat_id,
@@ -150,19 +163,28 @@ async def generate_script(request: dict):
     logger.info(f"Research started")
     start_time = time.time()
     try:
+
         # ideation_id = ObjectId(request.get("script_id"))
         script = str(request.get("script"))
         modification_prompt = str(request.get("modification_prompt"))
 
+        chat_history = await messages(request.get('chat_id'))
+
         # collection = db.Scripts
 
-        response = await modify_script(script, modification_prompt)
+        modification_response = await modify_script(script, modification_prompt, chat_history)
+        modified_script = await generate_final_new_script(script, modification_prompt, modification_response)
+
+        await update_final_script(str(request.get("script_id")), modified_script)
+
+        await add_message(f"{modification_prompt}", request.get('chat_id'), "human")
+        await add_message(f"Script modification agent's response: {modification_response}", request.get('chat_id'), "ai")
 
         total_time = time.time() - start_time
 
         return {
             "success": True,
-            "script": response,
+            "script": modification_response,
             "total_process_time": total_time
         }
 
@@ -173,25 +195,6 @@ async def generate_script(request: dict):
         logger.error(f"Error in upsert: {str(error)}")
         raise HTTPException(status_code=500, detail=str(error))
 
-@router.post("/test_mongodb")
-async def test_mongodb():
-    try:
-        collection = db.Ideation
-        document = {
-            "initial_input": "Testing",
-            "timestamp": time.time()
-        }
-
-        # Insert document into MongoDB
-        response = await collection.insert_one(document)
-
-        return {
-            "success":True,
-            "id":str(response.inserted_id)
-        }
-    except Exception as error:
-        logger.error(f"Error in upsert: {str(error)}")
-        raise HTTPException(status_code=500, detail=str(error))
 
 @router.get("/get_ideation/{chat_id}")
 async def get_recent_ideation(chat_id: str):
@@ -465,3 +468,113 @@ async def get_latest_session():
     except Exception as error:
         logger.error(f"Error retrieving chats: {str(error)}")
         raise HTTPException(status_code=500, detail="Error retrieving chats")
+
+
+@router.post("/test_mongodb")
+async def test_mongodb(request:dict):
+    sessionid = request.get("sessionid")
+    type = request.get("type")
+    message = request.get("message")
+    
+    try:
+        # Insert document into MongoDB
+        result = await messages(sessionid)
+
+        return {
+            "success":True,
+            "result": result
+        }
+    except Exception as error:
+        logger.error(f"Error in upsert: {str(error)}")
+        raise HTTPException(status_code=500, detail=str(error))
+
+from pymongo import UpdateOne
+from fastapi import HTTPException
+import json
+
+async def add_message(message: str, session_id: str, msg_type: str) -> None:
+    collection = db.History
+    """Append the message to the messages array in MongoDB"""
+    try:
+        # Define the message structure
+        new_message = {
+            "type": msg_type,
+            "data": {
+                "content": message,
+                "additional_kwargs": {},
+                "response_metadata": {}
+            }
+        }
+
+        # Handle cases where no document was found
+        result = await collection.update_one(
+            {"sessionId": session_id},
+            {"$push": {"messages": new_message}}
+        )
+
+        if result.matched_count == 0:
+            raise HTTPException(status_code=404, detail="Session not found")
+        
+    except Exception as e:
+        logger.error(f"Error updating session {session_id}: {e}")
+        raise HTTPException(status_code=500, detail="Error adding message to history")
+
+
+async def messages(session_id: str):
+    """Retrieve and format messages from MongoDB"""
+    collection = db.History
+    try:
+        # Find the document by sessionId
+        document = await collection.find_one({"sessionId": session_id})
+        
+        if not document or "messages" not in document:
+            return []
+
+        # Extract messages from the document
+        messages_list = document["messages"]
+
+        # Process the messages and pair human and ai messages
+        paired_messages = []
+        current_pair = {}
+
+        for message in messages_list:
+            message_type = message["type"]
+            message_content = message["data"]["content"]
+
+            if message_type == "human":
+                # If it's a human message, start a new pair
+                current_pair = {"human": message_content}
+                paired_messages.append(current_pair)
+                current_pair = {}
+            elif message_type == "ai":
+                # If it's an AI message, complete the pair
+                current_pair["ai"] = message_content
+                paired_messages.append(current_pair)
+                current_pair = {}  # Reset for the next pair
+
+        return paired_messages
+
+    except Exception as error:
+        logger.error(f"Error retrieving messages for session {session_id}: {error}")
+        raise HTTPException(status_code=500, detail="Error retrieving messages")
+
+async def update_final_script(script_id: str, new_final_script: str) -> None:
+    """Update the final_script value in the Scripts collection by script_id"""
+    collection = db.Scripts  # Assuming db is your MongoDB connection
+    
+    try:
+        # Perform the update operation
+        result = await collection.update_one(
+            {"_id": ObjectId(script_id)},  # Query by script_id
+            {"$set": {"final_script": new_final_script, "timestamp": time.time()}}  # Set the new final_script and update timestamp
+        )
+
+        # Check if the document was found and modified
+        if result.matched_count == 0:
+            raise HTTPException(status_code=404, detail="Script not found")
+        elif result.modified_count == 0:
+            raise HTTPException(status_code=400, detail="No changes made to final_script")
+
+    except Exception as error:
+        logger.error(f"Error updating final_script for script_id {script_id}: {error}")
+        raise HTTPException(status_code=500, detail="Error updating final_script")
