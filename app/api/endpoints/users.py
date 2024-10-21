@@ -4,7 +4,7 @@ import logging
 import time
 from datetime import datetime, timedelta
 import json
-from app.api.agents import IdeationFlow, ResearchFlow, ScriptingFlow, modify_script, generate_final_new_script
+from app.api.agents import IdeationFlow, ResearchFlow, ScriptingFlow, modify_script, generate_final_new_script, summarize_chat_history
 from motor.motor_asyncio import AsyncIOMotorClient
 from bson import ObjectId
 from app.core.config import get_settings
@@ -62,15 +62,17 @@ async def agent_team(
         chat_id = ObjectId(request.get('chat_id'))
         collection = db.Ideation
 
-        chat_history = await messages(request.get('chat_id'))
+        full_chat_history = await messages(request.get('chat_id'))
+
+        chat_summary = await summarize_chat_history(str(full_chat_history))
 
         ideation = IdeationFlow(timeout=300, verbose=True)
 
-        ideation_result = await ideation.run(input=initial_input, chat_history=chat_history)
+        ideation_result = await ideation.run(input=initial_input, chat_history=chat_summary)
 
         research = ResearchFlow(timeout=300, verbose=True)
 
-        research_result = await research.run(input=initial_input, ideation=ideation_result, chat_history=chat_history)
+        research_result = await research.run(input=initial_input, ideation=ideation_result, chat_history=chat_summary)
 
         total_time = time.time() - start_time
         
@@ -114,13 +116,15 @@ async def generate_script(request: dict):
         ideation_id = ObjectId(request.get("ideation_id"))
         chat_id = ObjectId(request.get('chat_id'))
         
-        chat_history = await messages(request.get('chat_id'))
+        full_chat_history = await messages(request.get('chat_id'))
+
+        chat_summary = await summarize_chat_history(str(full_chat_history))
         
         collection = db.Scripts
 
         scripting = ScriptingFlow(timeout=300, verbose=True)
 
-        response = await scripting.run(ideation=ideation_result, research=research_result, chat_history=chat_history)
+        response = await scripting.run(ideation=ideation_result, research=research_result, chat_history=chat_summary)
 
         total_time = time.time() - start_time
 
@@ -168,11 +172,14 @@ async def generate_script(request: dict):
         script = str(request.get("script"))
         modification_prompt = str(request.get("modification_prompt"))
 
-        chat_history = await messages(request.get('chat_id'))
+        full_chat_history = await messages(request.get('chat_id'))
+
+        chat_summary = await summarize_chat_history(str(full_chat_history))
+        
 
         # collection = db.Scripts
 
-        modification_response = await modify_script(script, modification_prompt, chat_history)
+        modification_response = await modify_script(script, modification_prompt, chat_summary)
         modified_script = await generate_final_new_script(script, modification_prompt, modification_response)
 
         await update_final_script(str(request.get("script_id")), modified_script)

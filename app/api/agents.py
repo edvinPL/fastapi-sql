@@ -438,3 +438,16 @@ async def generate_final_new_script(initial_script: str, modification_prompt:str
     response = OpenAI(api_key=get_settings().OPENAI_API_KEY, model=get_settings().RESEARCH_LLM_NAME).chat(messages)
 
     return str(response)
+
+async def summarize_chat_history(chat: str):
+       
+    messages = [
+        ChatMessage(
+            role="system", content=prompts.SUMMARIZATION_PROMPT
+        ),
+        ChatMessage(role="user", content=f"{chat}"),
+    ]
+    response = OpenAI(api_key=get_settings().OPENAI_API_KEY, model=get_settings().RESEARCH_LLM_NAME).chat(messages)
+
+    return str(response)
+
