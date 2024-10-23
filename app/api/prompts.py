@@ -305,6 +305,7 @@ Craft a captivating and informative Level 3 YouTube video script that seamlessly
 
 **Steps:**
 
+
 1. Immerse in the Brief:
     - Review the Content Set: 
         - Thoroughly examine the optimized title, thumbnail concept, narrative outline, and the Stage 3 prompt from Team 1 (Ideation Workflow).
