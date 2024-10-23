@@ -737,7 +737,19 @@ def search_notion_pages(query: str):
     # Filter results to get only pages
     pages = [result for result in response.get('results', []) if result['object'] == 'page']
 
-    return pages
+    # Extract page id and plain_text from the Name property
+    extracted_pages = []
+    for page in pages:
+        page_id = page['id']
+        title_property = page.get('properties', {}).get('Name', {}).get('title', [])
+        plain_texts = [text_part['plain_text'] for text_part in title_property if text_part.get('plain_text')]
+        
+        extracted_pages.append({
+            'id': page_id,
+            'plain_text': ' '.join(plain_texts) if plain_texts else None
+        })
+
+    return extracted_pages
 
 # def save_in_notion(content:str, title:str):
 #     token = get_settings().NOTION_TOKEN  # Your Notion integration token
